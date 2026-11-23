@@ -5,7 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
-/** Optional Android 9 boot launcher. Disabled by default and controlled in app settings. */
+/** Optional Android 9 boot launcher. Disabled by default; accept system boot broadcasts only. */
 public final class BootReceiver extends BroadcastReceiver {
     private static final String PREFS = "liuguang";
     private static final String KEY_AUTO_START = "autoStart";
