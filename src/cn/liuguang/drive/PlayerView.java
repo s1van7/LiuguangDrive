@@ -437,7 +437,7 @@ final class PlayerView extends View {
             float alpha = Math.max(0.06f, Math.min(1f, fade * edgeFade));
 
             int color;
-            if (distance < 0.35f) color = theme.text;
+            if (distance < 0.35f) color = Theme.blend(theme.text, theme.accent, 0.20f);
             else if (distance < 1.2f) color = Theme.blend(theme.text, theme.sub, 0.55f + 0.3f * distance);
             else color = theme.dim;
             color = Theme.alpha(color, (int) (255 * alpha));
