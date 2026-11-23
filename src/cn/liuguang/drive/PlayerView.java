@@ -299,6 +299,17 @@ final class PlayerView extends View {
                 new int[]{Theme.alpha(0xFFFFFF, theme.dark ? 12 : 46), Theme.alpha(0xFFFFFF, 0)},
                 null, Shader.TileMode.CLAMP));
 
+        // 现代主题使用低对比度双卡片组织封面信息与歌词，避免整屏内容漂浮。
+        if (theme.id == Theme.MODERN) {
+            round(c, 32, 84, 392, 384, 28, Theme.alpha(theme.surface, 132));
+            stroke(c, Theme.alpha(theme.line, 170), 1f);
+            c.drawRoundRect(new RectF(32, 84, 424, 468), 28, 28, paint);
+            round(c, 472, 84, 520, 384, 28, Theme.alpha(theme.surface, 108));
+            stroke(c, Theme.alpha(theme.line, 150), 1f);
+            c.drawRoundRect(new RectF(472, 84, 992, 468), 28, 28, paint);
+            round(c, 56, 84, 42, 3, 1.5f, Theme.alpha(theme.accent, 210));
+        }
+
         // 顶部按钮底
         circle(c, 824, 40, 21, Theme.alpha(theme.surface, theme.dark ? 200 : 170));
         circle(c, 880, 40, 21, Theme.alpha(theme.surface, theme.dark ? 200 : 170));
