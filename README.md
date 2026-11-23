@@ -131,7 +131,7 @@ bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
 
 ### 签名与覆盖安装（正式发布前必读）
 
-Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密钥和密码公开提交到 Git 历史中，因此该密钥已视为**泄露**，不得继续用于正式发布。0.6.0 的 CI 构建使用一次性临时密钥，仅用于验证编译与 APK 结构，不能覆盖安装旧版，也不能上传为正式 Release。
+Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密钥和密码公开提交到 Git 历史中，因此该密钥已视为**泄露**，不得继续用于正式发布。删除文件不会清除 Git 历史中的旧副本。0.6.0 的 CI 构建使用一次性临时密钥，仅用于验证编译与 APK 结构，不能覆盖安装旧版，也不能上传为正式 Release。
 
 正式发布前，维护者必须生成一把新的私有发布密钥，并将以下 GitHub Actions Secrets 配置到仓库（Settings → Secrets and variables → Actions）：
 
@@ -139,7 +139,14 @@ Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密�
 - `SIGNING_PASSWORD`：密钥库密码；
 - `SIGNING_ALIAS`：密钥别名。
 
-新密钥与旧公开密钥不同，旧版本用户需要先卸载旧版再安装新签名版本；卸载会清除应用私有设置和歌词缓存。之后必须安全备份新密钥，绝不能提交到 Git 或写入日志。普通本地正式构建使用 `SIGNING_KEYSTORE`、`SIGNING_ALIAS`、`SIGNING_PASSWORD` 环境变量。
+可在本地生成新密钥（请离线安全备份，丢失后将无法继续发布可覆盖安装的更新）：
+
+```bash
+keytool -genkeypair -v -keystore liuguang-release.jks -alias liuguang -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 liuguang-release.jks
+```
+
+将 Base64 输出保存到 `SIGNING_KEYSTORE_BASE64`，密码保存到 `SIGNING_PASSWORD`，别名保存到 `SIGNING_ALIAS`。新密钥与旧公开密钥不同，旧版本用户需要先卸载旧版再安装新签名版本；卸载会清除应用私有设置和歌词缓存。之后必须安全备份新密钥，绝不能提交到 Git 或写入日志。普通本地正式构建使用 `SIGNING_KEYSTORE`、`SIGNING_ALIAS`、`SIGNING_PASSWORD` 环境变量。
 
 ---
 
@@ -149,6 +156,13 @@ Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密�
 - 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
 - 移除仓库内公开的发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
 - 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入 Git 历史或构建日志。
+
+## 0.6.0 更新
+
+- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
+- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
+- 移除仓库当前版本树中的公开发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
+- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入新提交和构建日志。
 
 ## 0.5.0 更新
 
@@ -162,7 +176,7 @@ Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密�
 
 ## 隐私
 
-- 只有 `BLUETOOTH` / `BLUETOOTH_ADMIN` 两个权限，**没有 INTERNET**；
+- 仅申请 `BLUETOOTH`、`BLUETOOTH_ADMIN` 和 `RECEIVE_BOOT_COMPLETED`，**没有 INTERNET**；
 - 通知监听只处理带 `MediaSession` 或 `category=transport` 的通知，聊天、短信、其他通知一律不读；
 - 不配对、不读 MAC、不上传任何数据；歌词缓存只存在本机 `filesDir`。
 
@@ -174,4 +188,4 @@ Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密�
 - 歌词依赖播放器主动上报。播放器不提供就没有，本软件不会联网去搜歌词（也没有网络权限）。
 - 第一次听某首歌时歌词只能逐句出现，放完一遍后才有完整时间轴。
 - 部分车机的媒体通知不带 `MediaSession.Token`，会退回 `MediaSessionManager.getActiveSessions()`；若该接口被厂商限制，则无法读取。
-- 签名固定为仓库里的 `signing/liuguang-release.jks`，从 0.4.0 起可直接覆盖安装，不需要先卸载。
+- 0.4.0 及更早版本曾使用仓库历史中的旧签名；该密钥已公开泄露，0.6.0 之后正式发布需使用新私钥，首次迁移需卸载旧版。
