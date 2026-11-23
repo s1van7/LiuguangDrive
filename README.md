@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.3.0
+# 流光车机音乐 · 0.4.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -6,7 +6,7 @@
 
 面向 Android 9 / 1024×600 车机的**纯显示端**音乐界面。手机通过蓝牙放歌，车机屏幕完整显示歌名、歌手、专辑、封面、进度和歌词。
 
-Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码 13 个文件、单包、零依赖，APK 约 60 KB。
+Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码 14 个文件、单包、零依赖，APK 约 53 KB。
 
 ---
 
@@ -108,6 +108,7 @@ src/cn/liuguang/drive/
   LyricProbe.java         判断一段文字是歌词还是歌曲信息（纯 Java，可测）
   LrcParser.java          无依赖 LRC 解析（纯 Java，可测）
   LyricCache.java         歌词时间轴落盘
+  SessionPick.java        多播放器时挑显示哪个会话（纯 Java，可测）
   AppProfile.java         播放器包名 → 名称/品牌色
   Theme.java              四套配色
   Panels.java / Sheet.java 面板组件与自绘模态卡片
@@ -123,10 +124,20 @@ src/cn/liuguang/drive/
 
 ```bash
 bash build.sh          # aapt → javac → d8 → zipalign → apksigner
-bash tests/run.sh      # 纯 JVM 自检，63 项断言，不需要设备
+bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
 ```
 
 依赖只有 `platforms;android-28` 和 `build-tools;34.0.0`。
+
+### 签名与覆盖安装
+
+APK 用仓库里的 `signing/liuguang-release.jks` 签名（别名 `liuguang`，密码 `liuguang-local-build`）。**这个文件必须提交**：Android 只允许同签名的包覆盖安装，签名一变就只能先卸载，设置和歌词缓存全丢。
+
+- 升级版本时记得同时改 `AndroidManifest.xml` 的 `versionCode`（必须递增）和 `build.sh` 里的 `VERSION`；
+- CI 产出的 APK 和 Release 里的 APK 用同一把密钥，所以从 Actions 下载的包也能直接盖在已装版本上；
+- 想换成自己的密钥：`SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh`，但换过之后老用户必须卸载一次。
+
+> 密钥是公开的，这意味着别人也能签一个同名的包。本项目没有联网权限、只读媒体信息，风险可控；如果你要正式分发，把密钥挪到 GitHub Secrets 里，别提交。
 
 ---
 
@@ -144,4 +155,4 @@ bash tests/run.sh      # 纯 JVM 自检，63 项断言，不需要设备
 - 歌词依赖播放器主动上报。播放器不提供就没有，本软件不会联网去搜歌词（也没有网络权限）。
 - 第一次听某首歌时歌词只能逐句出现，放完一遍后才有完整时间轴。
 - 部分车机的媒体通知不带 `MediaSession.Token`，会退回 `MediaSessionManager.getActiveSessions()`；若该接口被厂商限制，则无法读取。
-- APK 用本地开发签名，覆盖安装旧版本需先卸载（会清设置和歌词缓存）。
+- 签名固定为仓库里的 `signing/liuguang-release.jks`，从 0.4.0 起可直接覆盖安装，不需要先卸载。

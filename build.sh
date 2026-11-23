@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="0.3.0"
+VERSION="0.4.0"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$SDK" ]; then echo "请先设置 ANDROID_HOME 指向 Android SDK 目录。" >&2; exit 1; fi
 TOOLS="$SDK/build-tools/34.0.0"
@@ -36,11 +36,14 @@ cp "$OUT/base.apk" "$OUT/unsigned.apk"
 (cd "$OUT/dex" && zip -q -j "$(realpath "../unsigned.apk")" classes*.dex)
 "$TOOLS/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
-KEYSTORE="${SIGNING_KEYSTORE:-.signing/development.jks}"
+# 默认用仓库里的发布签名。签名必须每次一致，否则用户装新版会被系统拒绝，
+# 只能先卸载（设置和歌词缓存都会丢）。想换成自己的密钥就覆盖这两个变量：
+#   SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh
+KEYSTORE="${SIGNING_KEYSTORE:-signing/liuguang-release.jks}"
 KEY_ALIAS="${SIGNING_ALIAS:-liuguang}"
 export STORE_PASS="${SIGNING_PASSWORD:-liuguang-local-build}"
 if [ ! -f "$KEYSTORE" ]; then
-    echo "==> 生成本地开发签名（不能用于覆盖已发布版本）"
+    echo "==> 没找到 $KEYSTORE，生成本地临时签名（这次构建的 APK 无法覆盖安装到已有版本上）"
     mkdir -p "$(dirname "$KEYSTORE")"
     keytool -genkeypair -keystore "$KEYSTORE" -storepass "$STORE_PASS" -keypass "$STORE_PASS" \
         -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 3650 \

@@ -9,5 +9,6 @@ javac -encoding UTF-8 -d "$OUT" \
     src/cn/liuguang/drive/Keys.java \
     src/cn/liuguang/drive/LyricStream.java \
     src/cn/liuguang/drive/LyricProbe.java \
+    src/cn/liuguang/drive/SessionPick.java \
     tests/SelfTest.java
 java -cp "$OUT" cn.liuguang.drive.SelfTest

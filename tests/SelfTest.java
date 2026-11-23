@@ -29,7 +29,45 @@ public class SelfTest {
         testLyricStream();
         testLyricProbe();
         testKeys();
+        testSessionPick();
         System.out.println("\n全部通过：" + passed + " 项");
+    }
+
+    private static void testSessionPick() {
+        // 只有一个会话
+        checkEquals(0, SessionPick.choose(new int[]{SessionPick.PLAYING}, new long[]{1L}, SessionPick.NONE),
+                "只有一个在放的会话");
+        checkEquals(SessionPick.NONE, SessionPick.choose(new int[0], new long[0], SessionPick.NONE),
+                "没有会话时返回 NONE");
+
+        // 有在放的，优先它，而不是列表第一个
+        int[] states = {SessionPick.PAUSED, SessionPick.PLAYING, SessionPick.PAUSED};
+        long[] times = {900L, 100L, 800L};
+        checkEquals(1, SessionPick.choose(states, times, SessionPick.NONE), "优先选正在播放的会话");
+
+        // 当前这个还在放，就别切走（两个播放器同时放时不来回跳）
+        int[] bothPlaying = {SessionPick.PLAYING, SessionPick.PLAYING};
+        checkEquals(0, SessionPick.choose(bothPlaying, new long[]{100L, 900L}, 0),
+                "两个都在放时保持当前会话");
+
+        // 都在暂停：选最近更新过状态的那个（用户刚按了暂停，界面不该空掉）
+        int[] paused = {SessionPick.PAUSED, SessionPick.PAUSED, SessionPick.PAUSED};
+        checkEquals(2, SessionPick.choose(paused, new long[]{100L, 300L, 800L}, SessionPick.NONE),
+                "都暂停时选最近更新的会话");
+
+        // 缓冲中的也算活跃
+        int[] buffering = {SessionPick.PAUSED, SessionPick.BUFFERING};
+        checkEquals(1, SessionPick.choose(buffering, new long[]{900L, 100L}, SessionPick.NONE),
+                "缓冲中的会话也算活跃");
+
+        // 全是 STOPPED/NONE：退回第一个，保证界面有东西可显示
+        int[] idle = {0, 0, 0};
+        checkEquals(0, SessionPick.choose(idle, new long[]{0L, 0L, 0L}, SessionPick.NONE),
+                "全部空闲时退回第一个会话");
+
+        check(SessionPick.isActive(SessionPick.PLAYING), "播放算活跃");
+        check(SessionPick.isActive(SessionPick.BUFFERING), "缓冲算活跃");
+        check(!SessionPick.isActive(SessionPick.PAUSED), "暂停不算活跃");
     }
 
     private static void testLrcParser() {

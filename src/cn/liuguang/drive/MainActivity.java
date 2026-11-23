@@ -45,6 +45,11 @@ import java.util.Locale;
 public class MainActivity extends Activity implements PlayerView.Host, MediaAccessService.Sink {
     private static final String PREFS = "liuguang";
 
+    /** 播放中的刷新间隔：进度条与歌词要跟手。 */
+    private static final long TICK_PLAYING_MS = 250L;
+    /** 暂停 / 无会话时的刷新间隔：只为等新状态，没必要那么勤。 */
+    private static final long TICK_IDLE_MS = 1000L;
+
     private static final int IMMERSIVE = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             | View.SYSTEM_UI_FLAG_FULLSCREEN
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -63,10 +68,13 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
     private BluetoothStatus bluetooth;
 
     private MediaController controller;
+    private MediaSessionManager sessionManager;
+    private boolean sessionsListening;
     private String boundPkg = "";
     private MediaSession.Token boundToken;
     private MediaMetadata metadata;
     private boolean embeddedApplied, cacheChecked;
+    private int lyricVersion = -1;
     private boolean resumed;
     private boolean introShown;
 
@@ -120,6 +128,7 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
         applySystemBars();
         MediaAccessService.setSink(this);
         registerReceiver(changeReceiver, new IntentFilter(MediaAccessService.CHANGED));
+        startSessionWatch();
         bindSession();
         handler.removeCallbacks(tick);
         handler.post(tick);
@@ -134,6 +143,7 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
     @Override protected void onPause() {
         super.onPause();
         resumed = false;
+        stopSessionWatch();
         MediaAccessService.setSink(null);
         try { unregisterReceiver(changeReceiver); } catch (Exception ignored) { }
         handler.removeCallbacks(tick);
@@ -195,27 +205,84 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
             refreshState();
             return;
         }
+        // 新来的通知属于另一个 App。如果当前这个还在放歌，不直接切过去——
+        // 手机里同时挂着两三个播放器很常见，得让统一的策略判断谁更该显示。
+        if (controller != null && model.playing && trySystemSessions()) return;
         if (snapshot.token != null) attach(snapshot.token, snapshot.pkg);
         else trySystemSessions();
     }
 
-    /** 通知里没有 MediaSession 的机型，退回公开的会话列表。 */
-    private void trySystemSessions() {
+    private ComponentName listenerComponent() {
+        return new ComponentName(this, MediaAccessService.class);
+    }
+
+    /**
+     * 监听系统活跃会话列表的变化。
+     *
+     * 只靠通知回调不够：手机从一个播放器切到另一个时，通知不一定重发，
+     * 界面就会停在旧的那个上。系统这个监听能立刻拿到新列表。
+     */
+    private void startSessionWatch() {
+        if (sessionsListening || !hasAccess()) return;
         try {
-            MediaSessionManager manager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
-            if (manager == null) { clearSession(); return; }
-            List<MediaController> list =
-                    manager.getActiveSessions(new ComponentName(this, MediaAccessService.class));
-            if (list == null || list.isEmpty()) { clearSession(); return; }
-            MediaController playing = null;
-            for (MediaController candidate : list) {
-                PlaybackState state = candidate.getPlaybackState();
-                if (state != null && state.getState() == PlaybackState.STATE_PLAYING) { playing = candidate; break; }
+            if (sessionManager == null) {
+                sessionManager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
             }
-            MediaController chosen = playing != null ? playing : list.get(0);
+            if (sessionManager == null) return;
+            sessionManager.addOnActiveSessionsChangedListener(sessionsListener, listenerComponent(), handler);
+            sessionsListening = true;
+        } catch (Exception ignored) {
+            sessionsListening = false;
+        }
+    }
+
+    private void stopSessionWatch() {
+        if (!sessionsListening || sessionManager == null) { sessionsListening = false; return; }
+        try { sessionManager.removeOnActiveSessionsChangedListener(sessionsListener); } catch (Exception ignored) { }
+        sessionsListening = false;
+    }
+
+    private final MediaSessionManager.OnActiveSessionsChangedListener sessionsListener =
+            new MediaSessionManager.OnActiveSessionsChangedListener() {
+                @Override public void onActiveSessionsChanged(List<MediaController> controllers) {
+                    if (!resumed) return;
+                    trySystemSessions();
+                }
+            };
+
+    /** 通知里没有 MediaSession 的机型，退回公开的会话列表。返回是否绑定到了东西。 */
+    private boolean trySystemSessions() {
+        if (!hasAccess()) { clearSession(); return false; }
+        try {
+            if (sessionManager == null) {
+                sessionManager = (MediaSessionManager) getSystemService(Context.MEDIA_SESSION_SERVICE);
+            }
+            if (sessionManager == null) { clearSession(); return false; }
+
+            List<MediaController> list = sessionManager.getActiveSessions(listenerComponent());
+            if (list == null || list.isEmpty()) { clearSession(); return false; }
+
+            int count = list.size();
+            int[] states = new int[count];
+            long[] updatedAt = new long[count];
+            int current = SessionPick.NONE;
+            for (int i = 0; i < count; i++) {
+                MediaController item = list.get(i);
+                PlaybackState state = item.getPlaybackState();
+                states[i] = state == null ? PlaybackState.STATE_NONE : state.getState();
+                updatedAt[i] = state == null ? 0L : state.getLastPositionUpdateTime();
+                if (boundToken != null && boundToken.equals(item.getSessionToken())) current = i;
+            }
+
+            int index = SessionPick.choose(states, updatedAt, current);
+            if (index == SessionPick.NONE) { clearSession(); return false; }
+            MediaController chosen = list.get(index);
             attach(chosen.getSessionToken(), chosen.getPackageName());
+            return controller != null;
         } catch (Exception e) {
+            // 没有通知使用权时 getActiveSessions 会直接抛异常，界面回到等待状态
             clearSession();
+            return false;
         }
     }
 
@@ -429,10 +496,15 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
             }
         }
 
-        List<LrcParser.Line> lines = new ArrayList<LrcParser.Line>(lyricStream.lines());
-        model.lyrics = lines;
-        model.lyricLines = lines.size();
-        if (lines.isEmpty()) model.lyricSource = PlayerModel.LYRIC_NONE;
+        // 时间轴没变就不要重新拷一份：歌词攒到几百行时，每 250 ms 拷一次
+        // 是白白制造垃圾，弱一点的车机 SoC 上能看到 GC 抖动。
+        if (lyricVersion != lyricStream.version()) {
+            lyricVersion = lyricStream.version();
+            List<LrcParser.Line> lines = new ArrayList<LrcParser.Line>(lyricStream.lines());
+            model.lyrics = lines;
+            model.lyricLines = lines.size();
+            if (lines.isEmpty()) model.lyricSource = PlayerModel.LYRIC_NONE;
+        }
     }
 
     /** 元数据里没有歌手时，媒体通知的正文通常就是歌手，用它兜底。 */
@@ -512,7 +584,9 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
             }
             view.refresh();
             lastTick = now;
-            handler.postDelayed(this, 250);
+            // 播放中要跟住歌词和进度，暂停后没必要还每 250 ms 醒一次：
+            // 车机常电，降频能少烧一点 CPU，也少一点无谓重绘。
+            handler.postDelayed(this, model.playing ? TICK_PLAYING_MS : TICK_IDLE_MS);
         }
     };
 

@@ -29,11 +29,17 @@ public final class LyricStream {
     private final List<LrcParser.Line> lines = new ArrayList<LrcParser.Line>();
     /** 上一次看到的歌词文本。播放器会反复上报同一句，靠它判断"这一句还没换"。 */
     private String lastText = "";
+    /** 时间轴每次真正变化就 +1。界面靠它判断要不要重新拷一份列表。 */
+    private int version;
 
     public void clear() {
+        if (!lines.isEmpty() || !lastText.isEmpty()) version++;
         lines.clear();
         lastText = "";
     }
+
+    /** 时间轴版本号，只增不减。 */
+    public int version() { return version; }
 
     /** 用整份 LRC 覆盖时间轴（播放器内嵌歌词时走这条路）。 */
     public void load(List<LrcParser.Line> source) {
@@ -48,6 +54,7 @@ public final class LyricStream {
             lines.add(new LrcParser.Line(Math.max(0L, line.time), text));
         }
         sort();
+        version++;
     }
 
     /** 记录一句当前歌词，返回时间轴是否变化（变化才需要重绘）。 */
@@ -69,12 +76,14 @@ public final class LyricStream {
             if (lines.size() >= 3 && pos + RESTART_GAP_MS < time) {
                 lines.clear();
                 lines.add(new LrcParser.Line(pos, text));
+                version++;
                 return true;
             }
         }
         if (lines.size() >= MAX_LINES) return false;
         lines.add(new LrcParser.Line(pos, text));
         sort();
+        version++;
         return true;
     }
 

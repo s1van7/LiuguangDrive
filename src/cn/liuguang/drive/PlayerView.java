@@ -56,6 +56,8 @@ final class PlayerView extends View {
     private final PlayerModel model;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint artPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+    /** 绘制时复用的矩形，避免每帧都 new RectF。 */
+    private final RectF scratch = new RectF();
     private final List<Hit> hits = new ArrayList<Hit>();
     private final Map<String, Hit> hitMap = new HashMap<String, Hit>();
     private final List<String> navOrder = new ArrayList<String>();
@@ -790,7 +792,8 @@ final class PlayerView extends View {
 
     private void round(Canvas c, float x, float y, float w, float h, float radius, int color) {
         fill(c, color);
-        c.drawRoundRect(new RectF(x, y, x + w, y + h), radius, radius, paint);
+        scratch.set(x, y, x + w, y + h);
+        c.drawRoundRect(scratch, radius, radius, paint);
     }
 
     private void circle(Canvas c, float cx, float cy, float radius, int color) {
@@ -858,6 +861,7 @@ final class PlayerView extends View {
         if (ms < 0) ms = 0;
         long total = ms / 1000L;
         long minutes = total / 60, seconds = total % 60;
-        return String.format(Locale.ROOT, "%d:%02d", minutes, seconds);
+        // 不用 String.format：Formatter 每帧建一堆对象，这里只是拼个 "m:ss"
+        return seconds < 10 ? minutes + ":0" + seconds : minutes + ":" + seconds;
     }
 }

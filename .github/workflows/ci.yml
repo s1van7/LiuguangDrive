@@ -80,8 +80,8 @@ jobs:
           BADGING=$("$AAPT" dump badging "$APK")
           echo "$BADGING" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^uses-permission"
 
-          # 版本号必须是 0.3.0
-          echo "$BADGING" | grep -q "versionName='0.3.0'" || { echo "::error::versionName 不是 0.3.0"; exit 1; }
+          # 版本号必须是 0.4.0
+          echo "$BADGING" | grep -q "versionName='0.4.0'" || { echo "::error::versionName 不是 0.4.0"; exit 1; }
 
           # 只能有蓝牙两个权限，绝不能有 INTERNET
           PERMS=$(echo "$BADGING" | grep -c "^uses-permission" || true)
