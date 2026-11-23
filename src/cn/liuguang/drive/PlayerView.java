@@ -422,7 +422,11 @@ final class PlayerView extends View {
         float small = (focusLyrics ? 22 : 19) * (theme.largeText ? 1.12f : 1f);
         float span = 4.2f;
 
-        for (int i = 0; i < lines.size(); i++) {
+        // 只绘制当前行附近的可视歌词。整首歌可能有数百行，不必每帧扫描全部列表。
+        int first = Math.max(0, (int) Math.floor(animLine - span));
+        int last = Math.min(lines.size() - 1, (int) Math.ceil(animLine + span));
+        int activeIndex = LrcParser.activeIndex(lines, model.positionMs);
+        for (int i = first; i <= last; i++) {
             float d = i - animLine;
             if (d < -span || d > span) continue;
             float distance = Math.min(1f, Math.abs(d));
@@ -448,6 +452,20 @@ final class PlayerView extends View {
             } else {
                 text(c, lines.get(i).text, left, y, size, color, distance < 0.35f, right - left);
             }
+            if (i == activeIndex) drawLyricProgress(c, left, right, y,
+                    LrcParser.lineProgress(lines, activeIndex, model.positionMs, model.duration), focusLyrics);
+        }
+    }
+
+    /** 当前句的细进度线：让用户看出这一句正在播放到哪里，不做昂贵的逐字动画。 */
+    private void drawLyricProgress(Canvas c, float left, float right, float baseline,
+                                   float fraction, boolean centered) {
+        float width = Math.min(centered ? 184f : 128f, right - left);
+        float x = centered ? (left + right - width) / 2f : left;
+        float y = baseline + 17f;
+        round(c, x, y, width, 2f, 1f, Theme.alpha(theme.text, 24));
+        if (fraction > 0f) {
+            round(c, x, y, Math.max(2f, width * fraction), 2f, 1f, Theme.alpha(theme.accent, 220));
         }
     }
 
