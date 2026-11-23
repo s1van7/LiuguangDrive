@@ -44,7 +44,7 @@ public class SelfTest {
         int[] states = {SessionPick.PAUSED, SessionPick.PLAYING, SessionPick.PAUSED};
         long[] times = {900L, 100L, 800L};
         checkEquals(1, SessionPick.choose(states, times, SessionPick.NONE), "优先选正在播放的会话");
-        checkEquals(2, SessionPick.choose(
+        checkEquals(1, SessionPick.choose(
                 new int[]{SessionPick.PLAYING, SessionPick.PLAYING},
                 new long[]{100L, 900L}, SessionPick.NONE), "无当前会话时选择最近更新的播放会话");
 
@@ -62,7 +62,7 @@ public class SelfTest {
         int[] buffering = {SessionPick.PAUSED, SessionPick.BUFFERING};
         checkEquals(1, SessionPick.choose(buffering, new long[]{900L, 100L}, SessionPick.NONE),
                 "缓冲中的会话也算活跃");
-        checkEquals(2, SessionPick.choose(
+        checkEquals(1, SessionPick.choose(
                 new int[]{SessionPick.BUFFERING, SessionPick.BUFFERING},
                 new long[]{100L, 900L}, SessionPick.NONE), "多个缓冲会话选择最近更新的");
 
@@ -123,7 +123,7 @@ public class SelfTest {
         held.observe("长句歌词慢慢唱", 11000);
         checkEquals(1, held.size(), "同一句持续上报只记一次，不会重复显示");
 
-        // 位置抖动超过 4 秒，说明是另一遍副歌，应记成新的一行
+        // 同一句间隔超过 15 秒，说明是另一遍副歌，应记成新的一行
         check(stream.observe("第一句", 60000), "副歌重复出现记为新的一行");
         checkEquals(4, stream.size(), "重复段落单独成行");
 
