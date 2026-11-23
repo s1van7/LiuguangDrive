@@ -81,7 +81,7 @@ jobs:
           echo "$BADGING" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^uses-permission"
 
           # 版本号与 build.sh 保持一致，避免升级版本后 CI 仍校验旧版本
-          EXPECTED_VERSION=$(sed -n 's/^VERSION="\\([^"]*\\)"/\\1/p' build.sh)
+          EXPECTED_VERSION=$(grep '^VERSION=' build.sh | head -1 | cut -d '"' -f 2)
           [ -n "$EXPECTED_VERSION" ] || { echo "::error::无法从 build.sh 读取版本号"; exit 1; }
           echo "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'" || { echo "::error::versionName 与 build.sh 不一致，期望 $EXPECTED_VERSION"; exit 1; }
 
