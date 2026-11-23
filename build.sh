@@ -36,9 +36,8 @@ cp "$OUT/base.apk" "$OUT/unsigned.apk"
 (cd "$OUT/dex" && zip -q -j "$(realpath "../unsigned.apk")" classes*.dex)
 "$TOOLS/zipalign" -f -p 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 
-# 默认用仓库里的发布签名。签名必须每次一致，否则用户装新版会被系统拒绝，
-# 只能先卸载（设置和歌词缓存都会丢）。想换成自己的密钥就覆盖这两个变量：
-#   SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh
+# 正式发布必须使用私有签名密钥（不得提交仓库）；同一应用升级必须保持签名一致。
+# SIGNING_KEYSTORE=/secure/release.jks SIGNING_ALIAS=liuguang SIGNING_PASSWORD=*** bash build.sh
 KEYSTORE="${SIGNING_KEYSTORE:-}"
 KEY_ALIAS="${SIGNING_ALIAS:-}"
 if [ -z "$KEYSTORE" ] || [ -z "$KEY_ALIAS" ] || [ -z "${SIGNING_PASSWORD:-}" ]; then
