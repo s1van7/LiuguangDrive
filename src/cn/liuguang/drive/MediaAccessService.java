@@ -71,6 +71,8 @@ public class MediaAccessService extends NotificationListenerService {
     private static final Map<String, Snapshot> SNAPSHOTS = new LinkedHashMap<String, Snapshot>();
     private static Sink sink;
     private static boolean connected;
+    /** 防止车机长期收到多个播放器通知时，静态快照无限持有封面 Bitmap。 */
+    private static final int MAX_SNAPSHOTS = 8;
 
     static void setSink(Sink value) { sink = value; }
 
@@ -114,7 +116,15 @@ public class MediaAccessService extends NotificationListenerService {
         if (notification == null || !isMedia(notification)) return;
         Snapshot snapshot = read(sbn, notification);
         if (snapshot == null) return;
-        synchronized (SNAPSHOTS) { SNAPSHOTS.put(sbn.getPackageName(), snapshot); }
+        synchronized (SNAPSHOTS) {
+            // LinkedHashMap 按最近一次通知更新时间排序；最多保留 8 个媒体来源。
+            SNAPSHOTS.remove(sbn.getPackageName());
+            SNAPSHOTS.put(sbn.getPackageName(), snapshot);
+            while (SNAPSHOTS.size() > MAX_SNAPSHOTS) {
+                String oldest = SNAPSHOTS.keySet().iterator().next();
+                SNAPSHOTS.remove(oldest);
+            }
+        }
         notifySink();
     }
 
