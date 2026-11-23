@@ -124,7 +124,7 @@ src/cn/liuguang/drive/
 
 ```bash
 bash build.sh          # aapt → javac → d8 → zipalign → apksigner
-bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
+bash tests/run.sh      # 纯 JVM 自检，76 项断言，不需要设备
 ```
 
 依赖只有 `platforms;android-28` 和 `build-tools;34.0.0`。
@@ -156,13 +156,6 @@ base64 -w0 liuguang-release.jks
 - 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
 - 移除仓库内公开的发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
 - 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入 Git 历史或构建日志。
-
-## 0.6.0 更新
-
-- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
-- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
-- 移除仓库当前版本树中的公开发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
-- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入新提交和构建日志。
 
 ## 0.5.0 更新
 
