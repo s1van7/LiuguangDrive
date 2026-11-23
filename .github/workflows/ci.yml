@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   test:
-    name: 自检（纯 JVM，63 项断言）
+    name: 自检（纯 JVM）
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
