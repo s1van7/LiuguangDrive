@@ -92,7 +92,7 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
         CrashLog.install(this);
 
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        themeId = prefs.getInt("theme", Theme.STREAM);
+        themeId = prefs.getInt("theme", Theme.MODERN);
         dimLevel = prefs.getInt("dim", 0);
         largeText = prefs.getBoolean("large", false);
         fillScreen = prefs.getBoolean("fill", false);
@@ -736,6 +736,18 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
             }
         });
         column.addView(auto);
+
+        final boolean autoStartEnabled = prefs.getBoolean("autoStart", false);
+        final LinearLayout autoStart = Panels.row(this, theme, "开机自动启动", autoStartEnabled ? "开" : "关", null);
+        autoStart.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                boolean enabled = !prefs.getBoolean("autoStart", false);
+                prefs.edit().putBoolean("autoStart", enabled).apply();
+                setRowValue(autoStart, enabled ? "开" : "关");
+                toast(enabled ? "已开启开机自动启动" : "已关闭开机自动启动");
+            }
+        });
+        column.addView(autoStart);
 
         final LinearLayout dim = Panels.row(this, theme, "屏幕调光", dimLabel(), null);
         dim.setOnClickListener(new View.OnClickListener() {
