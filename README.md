@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.6.0
+# 流光车机音乐 · 0.7.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -6,7 +6,7 @@
 
 面向 Android 9 / 1024×600 车机的**纯显示端**音乐界面。手机通过蓝牙放歌，车机屏幕完整显示歌名、歌手、专辑、封面、进度和歌词。
 
-Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码 14 个文件、单包、零依赖，APK 约 53 KB。
+Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码保持单包、零第三方运行时依赖，APK 体积保持轻量。
 
 ---
 
@@ -149,6 +149,14 @@ base64 -w0 liuguang-release.jks
 将 Base64 输出保存到 `SIGNING_KEYSTORE_BASE64`，密码保存到 `SIGNING_PASSWORD`，别名保存到 `SIGNING_ALIAS`。新密钥与旧公开密钥不同，旧版本用户需要先卸载旧版再安装新签名版本；卸载会清除应用私有设置和歌词缓存。之后必须安全备份新密钥，绝不能提交到 Git 或写入日志。普通本地正式构建使用 `SIGNING_KEYSTORE`、`SIGNING_ALIAS`、`SIGNING_PASSWORD` 环境变量。
 
 ---
+
+## 0.7.0 更新
+
+- 多播放器同时活跃时，优先保持当前正在播放的会话；无当前会话时，按最近状态更新时间选择播放中或缓冲中的来源，减少切换抖动。
+- 通知监听服务重连时主动回填系统仍在显示的媒体通知，减少重连后等待下一次通知更新的问题。
+- 通知监听断开时清空旧快照，避免把上一首歌的封面或歌词当作当前信息。
+- 将监听连接状态与界面回调引用声明为线程可见，降低 Binder 回调线程与主线程之间的可见性风险。
+- 扩充媒体会话选择测试，并校正文档中的歌词重复判定窗口。
 
 ## 0.6.0 更新
 
