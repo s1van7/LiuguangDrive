@@ -734,13 +734,26 @@ final class PlayerView extends View {
 
     private boolean ensureArt() {
         Bitmap source = model.artwork;
-        if (source == artSource && artCache != null) return false;
+        // 部分播放器会在元数据切换时回收旧封面；不要把失效 Bitmap 交给 Canvas。
+        if (source != null && source.isRecycled()) source = null;
+        if (source == artSource && artCache != null && !artCache.isRecycled()) return false;
         artSource = source;
         if (artCache != null && !artCache.isRecycled()) artCache.recycle();
         Bitmap base = source != null ? source : placeholder();
-        artCache = squareCrop(base, (int) ART_S);
-        tint = dominant(base);
-        if (base != source) base.recycle();
+        try {
+            artCache = squareCrop(base, (int) ART_S);
+            tint = dominant(base);
+        } catch (RuntimeException invalidArtwork) {
+            // 对异常尺寸/并发释放的封面降级为占位图，不能让播放主界面崩溃。
+            if (base != source && !base.isRecycled()) base.recycle();
+            artSource = null;
+            Bitmap fallback = placeholder();
+            artCache = squareCrop(fallback, (int) ART_S);
+            tint = dominant(fallback);
+            fallback.recycle();
+            return true;
+        }
+        if (base != source && !base.isRecycled()) base.recycle();
         return true;
     }
 
