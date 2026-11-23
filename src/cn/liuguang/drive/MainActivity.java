@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -151,10 +152,27 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
     }
 
     @Override protected void onDestroy() {
-        super.onDestroy();
         detach();
         if (bluetooth != null) bluetooth.stop();
         dismissDialog();
+        handler.removeCallbacksAndMessages(null);
+        if (view != null) view.releaseCaches();
+        if (model != null) model.artwork = null;
+        metadata = null;
+        super.onDestroy();
+    }
+
+    /** 系统内存告急或界面退到后台时，释放可重建的封面与整屏缓存。 */
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && view != null) {
+            view.releaseCaches();
+        }
+    }
+
+    @Override public void onLowMemory() {
+        super.onLowMemory();
+        if (view != null) view.releaseCaches();
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
