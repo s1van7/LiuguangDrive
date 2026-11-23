@@ -110,7 +110,7 @@ jobs:
       - name: 上传 APK
         uses: actions/upload-artifact@v7
         with:
-          name: LiuguangDrive-0.6.0-CI-only
+          name: LiuguangDrive-0.7.0-CI-only
           path: build/LiuguangDrive-*.apk
           if-no-files-found: error
           retention-days: 14
