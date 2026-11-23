@@ -125,6 +125,19 @@ public final class LrcParser {
         return answer;
     }
 
+    /**
+     * 当前歌词行内的播放进度（0..1）。
+     * 下一句时间优先作为终点；最后一句使用歌曲时长，没有时长时按 4 秒估算。
+     */
+    public static float lineProgress(List<Line> lines, int index, long position, long duration) {
+        if (lines == null || index < 0 || index >= lines.size()) return 0f;
+        long start = lines.get(index).time;
+        long end = index + 1 < lines.size() ? lines.get(index + 1).time : duration;
+        if (end <= start) end = start + 4000L;
+        float value = (position - start) / (float) (end - start);
+        return Math.max(0f, Math.min(1f, value));
+    }
+
     /** 下一行开始时间，用于做“唱完这一句”的进度动画；没有下一行返回 -1。 */
     public static long nextTime(List<Line> lines, int index) {
         if (lines == null || index < 0 || index + 1 >= lines.size()) return -1;
