@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="0.5.0"
+VERSION="0.6.0"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$SDK" ]; then echo "请先设置 ANDROID_HOME 指向 Android SDK 目录。" >&2; exit 1; fi
 TOOLS="$SDK/build-tools/34.0.0"
@@ -39,15 +39,24 @@ cp "$OUT/base.apk" "$OUT/unsigned.apk"
 # 默认用仓库里的发布签名。签名必须每次一致，否则用户装新版会被系统拒绝，
 # 只能先卸载（设置和歌词缓存都会丢）。想换成自己的密钥就覆盖这两个变量：
 #   SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh
-KEYSTORE="${SIGNING_KEYSTORE:-signing/liuguang-release.jks}"
-KEY_ALIAS="${SIGNING_ALIAS:-liuguang}"
-export STORE_PASS="${SIGNING_PASSWORD:-liuguang-local-build}"
-if [ ! -f "$KEYSTORE" ]; then
-    echo "==> 没找到 $KEYSTORE，生成本地临时签名（这次构建的 APK 无法覆盖安装到已有版本上）"
-    mkdir -p "$(dirname "$KEYSTORE")"
-    keytool -genkeypair -keystore "$KEYSTORE" -storepass "$STORE_PASS" -keypass "$STORE_PASS" \
-        -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 3650 \
-        -dname "CN=Liuguang Local Development,O=Liuguang,C=CN"
+KEYSTORE="${SIGNING_KEYSTORE:-}"
+KEY_ALIAS="${SIGNING_ALIAS:-}"
+if [ -z "$KEYSTORE" ] || [ -z "$KEY_ALIAS" ] || [ -z "${SIGNING_PASSWORD:-}" ]; then
+    if [ "${ALLOW_EPHEMERAL_SIGNING:-0}" = "1" ]; then
+        KEYSTORE="$OUT/ci-ephemeral-signing.jks"
+        KEY_ALIAS="liuguang-ci"
+        export STORE_PASS="ci-only-not-for-release"
+        echo "==> 使用一次性 CI 签名；此 APK 仅用于构建验证，不能作为正式升级包发布"
+        keytool -genkeypair -noprompt -keystore "$KEYSTORE" -storepass "$STORE_PASS" -keypass "$STORE_PASS" \
+            -alias "$KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 30 \
+            -dname "CN=Liuguang CI,O=Liuguang,C=US"
+    else
+        echo "缺少正式签名配置。请设置 SIGNING_KEYSTORE、SIGNING_ALIAS、SIGNING_PASSWORD；禁止使用仓库内密钥。" >&2
+        exit 1
+    fi
+else
+    export STORE_PASS="$SIGNING_PASSWORD"
+    [ -f "$KEYSTORE" ] || { echo "签名文件不存在：$KEYSTORE" >&2; exit 1; }
 fi
 
 APK="$OUT/LiuguangDrive-$VERSION.apk"
