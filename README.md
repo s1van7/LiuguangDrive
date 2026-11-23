@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.4.0
+# 流光车机音乐 · 0.5.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -68,7 +68,7 @@ Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库
 - 底部细进度条 + 三个圆形按钮；
 - 右上角两个圆形按钮：沉浸歌词、设置；时钟可直接点进空闲屏。
 
-**四套主题**（设置里切换，即时生效）：流光（暖金深色）、晨雾（米白浅色）、极夜（纯黑）、青瓷（墨绿）。
+**五套主题**（设置里切换，即时生效）：曜石（现代石墨灰 + 青绿色）、流光（暖金深色）、晨雾（米白浅色）、极夜（纯黑）、青瓷（墨绿）。
 
 **操作**：触摸；也支持方向盘/旋钮——方向键做空间导航（焦点环），确认键执行，返回键逐层退出，媒体键直接控制播放。
 
@@ -138,6 +138,12 @@ APK 用仓库里的 `signing/liuguang-release.jks` 签名（别名 `liuguang`，
 - 想换成自己的密钥：`SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh`，但换过之后老用户必须卸载一次。
 
 > 密钥是公开的，这意味着别人也能签一个同名的包。本项目没有联网权限、只读媒体信息，风险可控；如果你要正式分发，把密钥挪到 GitHub Secrets 里，别提交。
+
+---
+
+## 开机启动
+
+0.5.0 增加可选的「开机自动启动」设置，默认关闭。开启后，Android 9 在系统发送 `BOOT_COMPLETED` 广播时尝试启动主界面；部分车机固件可能限制开机拉起应用，实际行为需在目标设备验证。
 
 ---
 
