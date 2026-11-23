@@ -86,6 +86,9 @@ jobs:
           EXPECTED_VERSION=$(grep '^VERSION=' build.sh | head -1 | cut -d '"' -f 2)
           [ -n "$EXPECTED_VERSION" ] || { echo "::error::无法从 build.sh 读取版本号"; exit 1; }
           echo "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'" || { echo "::error::versionName 与 build.sh 不一致，期望 $EXPECTED_VERSION"; exit 1; }
+          grep -q 'android:versionCode="6"' AndroidManifest.xml || { echo "::error::versionCode 必须为 6"; exit 1; }
+          echo "$BADGING" | grep -q "sdkVersion:'28'" || { echo "::error::minSdk 必须为 28"; exit 1; }
+          echo "$BADGING" | grep -q "targetSdkVersion:'28'" || { echo "::error::targetSdk 必须为 28"; exit 1; }
 
           # 蓝牙 + 可选开机启动权限；绝不能有 INTERNET
           PERMS=$(echo "$BADGING" | grep -c "^uses-permission" || true)
