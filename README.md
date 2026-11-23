@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.5.0
+# 流光车机音乐 · 0.6.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -129,17 +129,26 @@ bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
 
 依赖只有 `platforms;android-28` 和 `build-tools;34.0.0`。
 
-### 签名与覆盖安装
+### 签名与覆盖安装（正式发布前必读）
 
-APK 用仓库里的 `signing/liuguang-release.jks` 签名（别名 `liuguang`，密码 `liuguang-local-build`）。**这个文件必须提交**：Android 只允许同签名的包覆盖安装，签名一变就只能先卸载，设置和歌词缓存全丢。
+Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密钥和密码公开提交到 Git 历史中，因此该密钥已视为**泄露**，不得继续用于正式发布。0.6.0 的 CI 构建使用一次性临时密钥，仅用于验证编译与 APK 结构，不能覆盖安装旧版，也不能上传为正式 Release。
 
-- 升级版本时记得同时改 `AndroidManifest.xml` 的 `versionCode`（必须递增）和 `build.sh` 里的 `VERSION`；
-- CI 产出的 APK 和 Release 里的 APK 用同一把密钥，所以从 Actions 下载的包也能直接盖在已装版本上；
-- 想换成自己的密钥：`SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh`，但换过之后老用户必须卸载一次。
+正式发布前，维护者必须生成一把新的私有发布密钥，并将以下 GitHub Actions Secrets 配置到仓库（Settings → Secrets and variables → Actions）：
 
-> 密钥是公开的，这意味着别人也能签一个同名的包。本项目没有联网权限、只读媒体信息，风险可控；如果你要正式分发，把密钥挪到 GitHub Secrets 里，别提交。
+- `SIGNING_KEYSTORE_BASE64`：新 `.jks` 文件的 Base64 内容；
+- `SIGNING_PASSWORD`：密钥库密码；
+- `SIGNING_ALIAS`：密钥别名。
+
+新密钥与旧公开密钥不同，旧版本用户需要先卸载旧版再安装新签名版本；卸载会清除应用私有设置和歌词缓存。之后必须安全备份新密钥，绝不能提交到 Git 或写入日志。普通本地正式构建使用 `SIGNING_KEYSTORE`、`SIGNING_ALIAS`、`SIGNING_PASSWORD` 环境变量。
 
 ---
+
+## 0.6.0 更新
+
+- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
+- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
+- 移除仓库内公开的发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
+- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入 Git 历史或构建日志。
 
 ## 0.5.0 更新
 
