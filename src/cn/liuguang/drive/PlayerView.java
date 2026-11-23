@@ -292,9 +292,9 @@ final class PlayerView extends View {
         boolean painted = false;
         if (artCache != null && !artCache.isRecycled()) {
             try {
-                Bitmap tiny = Bitmap.createScaledBitmap(artCache, 18, 18, true);
-                c.drawBitmap(tiny, null, new RectF(0, 0, W, H), artPaint);
-                tiny.recycle();
+                // 直接把 300px 封面拉伸到背景；过滤采样足以形成柔和色块。
+                // 不再临时创建 18×18 Bitmap，避免每次重建静态层产生额外分配/GC。
+                c.drawBitmap(artCache, null, new RectF(0, 0, W, H), artPaint);
                 painted = true;
             } catch (Exception ignored) {
                 painted = false;
