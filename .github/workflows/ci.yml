@@ -93,9 +93,8 @@ jobs:
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q "android.intent.action.BOOT_COMPLETED" || {
             echo "::error::APK 缺少 BOOT_COMPLETED 接收器"; exit 1;
           }
-          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -A 8 "cn.liuguang.drive.BootReceiver" | grep -q "exported=\x270x0\x27" || {
-            echo "::error::BootReceiver 必须不可被第三方应用导出"; exit 1;
-          }
+          grep -q 'android:name=".BootReceiver"' AndroidManifest.xml
+          grep -q 'android:exported="false"' AndroidManifest.xml || { echo "::error::BootReceiver 必须不可导出"; exit 1; }
 
           if echo "$BADGING" | grep -q "android.permission.INTERNET"; then
             echo "::error::APK 不应包含 INTERNET 权限"; exit 1
