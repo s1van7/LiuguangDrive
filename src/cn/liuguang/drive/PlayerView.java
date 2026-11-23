@@ -165,6 +165,21 @@ final class PlayerView extends View {
 
     void redraw() { invalidate(); }
 
+    /**
+     * 释放可重建的显示缓存。封面源 Bitmap 由 MediaMetadata/通知会话持有，
+     * 这里仅回收本 View 自己创建的派生图，避免误回收系统或共享对象。
+     */
+    void releaseCaches() {
+        if (chrome != null && !chrome.isRecycled()) chrome.recycle();
+        chrome = null;
+        if (artCache != null && !artCache.isRecycled()) artCache.recycle();
+        artCache = null;
+        artSource = null;
+        chromeDirty = true;
+        invalidate();
+    }
+
+
     /** 定时器每次进来都调；只有真的变了才重绘。 */
     void refresh() {
         int second = (int) (model.positionMs / 1000L);
