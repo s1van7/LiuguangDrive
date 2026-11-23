@@ -40,10 +40,13 @@ public class SelfTest {
         checkEquals(SessionPick.NONE, SessionPick.choose(new int[0], new long[0], SessionPick.NONE),
                 "没有会话时返回 NONE");
 
-        // 有在放的，优先它，而不是列表第一个
+        // 有在放的，优先它，而不是列表第一个；多个播放会话选择最近更新的
         int[] states = {SessionPick.PAUSED, SessionPick.PLAYING, SessionPick.PAUSED};
         long[] times = {900L, 100L, 800L};
         checkEquals(1, SessionPick.choose(states, times, SessionPick.NONE), "优先选正在播放的会话");
+        checkEquals(2, SessionPick.choose(
+                new int[]{SessionPick.PLAYING, SessionPick.PLAYING},
+                new long[]{100L, 900L}, SessionPick.NONE), "无当前会话时选择最近更新的播放会话");
 
         // 当前这个还在放，就别切走（两个播放器同时放时不来回跳）
         int[] bothPlaying = {SessionPick.PLAYING, SessionPick.PLAYING};
@@ -55,10 +58,13 @@ public class SelfTest {
         checkEquals(2, SessionPick.choose(paused, new long[]{100L, 300L, 800L}, SessionPick.NONE),
                 "都暂停时选最近更新的会话");
 
-        // 缓冲中的也算活跃
+        // 缓冲中的也算活跃；多个缓冲会话同样按最近更新时间选择
         int[] buffering = {SessionPick.PAUSED, SessionPick.BUFFERING};
         checkEquals(1, SessionPick.choose(buffering, new long[]{900L, 100L}, SessionPick.NONE),
                 "缓冲中的会话也算活跃");
+        checkEquals(2, SessionPick.choose(
+                new int[]{SessionPick.BUFFERING, SessionPick.BUFFERING},
+                new long[]{100L, 900L}, SessionPick.NONE), "多个缓冲会话选择最近更新的");
 
         // 全是 STOPPED/NONE：退回第一个，保证界面有东西可显示
         int[] idle = {0, 0, 0};
