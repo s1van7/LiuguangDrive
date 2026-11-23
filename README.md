@@ -1,5 +1,9 @@
 # 流光车机音乐 · 0.3.0
 
+[![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 面向 Android 9 / 1024×600 车机的**纯显示端**音乐界面。手机通过蓝牙放歌，车机屏幕完整显示歌名、歌手、专辑、封面、进度和歌词。
 
 Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码 13 个文件、单包、零依赖，APK 约 60 KB。
