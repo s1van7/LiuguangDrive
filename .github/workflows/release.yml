@@ -73,7 +73,7 @@ jobs:
           REQUESTED_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          VERSION=$(sed -n 's/^VERSION="\\([^"]*\\)"/\\1/p' build.sh)
+          VERSION=$(sed -n 's/^VERSION="\([^"]*\)"/\1/p' build.sh)
           TAG="${REQUESTED_TAG:-$GITHUB_REF_NAME}"
           [ "$TAG" = "v$VERSION" ] || { echo "::error::标签 $TAG 与源码版本 v$VERSION 不一致"; exit 1; }
           APK="build/LiuguangDrive-$VERSION.apk"
