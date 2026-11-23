@@ -96,6 +96,10 @@ public class SelfTest {
         checkEquals(1, LrcParser.activeIndex(lines, 6000), "定位到第二行");
         checkEquals(9250L, LrcParser.nextTime(lines, 1), "下一行时间");
         checkEquals(-1L, LrcParser.nextTime(lines, 2), "最后一行没有下一行");
+        checkEquals(0.0f, LrcParser.lineProgress(lines, 1, 5500L, 12000L), "当前句开始时进度为零");
+        checkEquals(0.5f, LrcParser.lineProgress(lines, 1, 7375L, 12000L), "当前句中途进度正确");
+        checkEquals(1.0f, LrcParser.lineProgress(lines, 1, 10000L, 12000L), "超过下一句时进度封顶");
+        checkEquals(0.5f, LrcParser.lineProgress(lines, 2, 11250L, 13250L), "最后一句使用歌曲时长计算进度");
     }
 
     private static void testLyricStream() {

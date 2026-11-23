@@ -165,6 +165,21 @@ final class PlayerView extends View {
 
     void redraw() { invalidate(); }
 
+    /**
+     * 释放可重建的显示缓存。封面源 Bitmap 由 MediaMetadata/通知会话持有，
+     * 这里仅回收本 View 自己创建的派生图，避免误回收系统或共享对象。
+     */
+    void releaseCaches() {
+        if (chrome != null && !chrome.isRecycled()) chrome.recycle();
+        chrome = null;
+        if (artCache != null && !artCache.isRecycled()) artCache.recycle();
+        artCache = null;
+        artSource = null;
+        chromeDirty = true;
+        invalidate();
+    }
+
+
     /** 定时器每次进来都调；只有真的变了才重绘。 */
     void refresh() {
         int second = (int) (model.positionMs / 1000L);
@@ -277,9 +292,9 @@ final class PlayerView extends View {
         boolean painted = false;
         if (artCache != null && !artCache.isRecycled()) {
             try {
-                Bitmap tiny = Bitmap.createScaledBitmap(artCache, 18, 18, true);
-                c.drawBitmap(tiny, null, new RectF(0, 0, W, H), artPaint);
-                tiny.recycle();
+                // 直接把 300px 封面拉伸到背景；过滤采样足以形成柔和色块。
+                // 不再临时创建 18×18 Bitmap，避免每次重建静态层产生额外分配/GC。
+                c.drawBitmap(artCache, null, new RectF(0, 0, W, H), artPaint);
                 painted = true;
             } catch (Exception ignored) {
                 painted = false;
@@ -298,6 +313,17 @@ final class PlayerView extends View {
         gradient(c, new RadialGradient(240, 150, 620,
                 new int[]{Theme.alpha(0xFFFFFF, theme.dark ? 12 : 46), Theme.alpha(0xFFFFFF, 0)},
                 null, Shader.TileMode.CLAMP));
+
+        // 现代主题使用低对比度双卡片组织封面信息与歌词，避免整屏内容漂浮。
+        if (theme.id == Theme.MODERN) {
+            round(c, 32, 84, 392, 384, 28, Theme.alpha(theme.surface, 132));
+            stroke(c, Theme.alpha(theme.line, 170), 1f);
+            c.drawRoundRect(new RectF(32, 84, 424, 468), 28, 28, paint);
+            round(c, 472, 84, 520, 384, 28, Theme.alpha(theme.surface, 108));
+            stroke(c, Theme.alpha(theme.line, 150), 1f);
+            c.drawRoundRect(new RectF(472, 84, 992, 468), 28, 28, paint);
+            round(c, 56, 84, 42, 3, 1.5f, Theme.alpha(theme.accent, 210));
+        }
 
         // 顶部按钮底
         circle(c, 824, 40, 21, Theme.alpha(theme.surface, theme.dark ? 200 : 170));
@@ -422,7 +448,11 @@ final class PlayerView extends View {
         float small = (focusLyrics ? 22 : 19) * (theme.largeText ? 1.12f : 1f);
         float span = 4.2f;
 
-        for (int i = 0; i < lines.size(); i++) {
+        // 只绘制当前行附近的可视歌词。整首歌可能有数百行，不必每帧扫描全部列表。
+        int first = Math.max(0, (int) Math.floor(animLine - span));
+        int last = Math.min(lines.size() - 1, (int) Math.ceil(animLine + span));
+        int activeIndex = LrcParser.activeIndex(lines, model.positionMs);
+        for (int i = first; i <= last; i++) {
             float d = i - animLine;
             if (d < -span || d > span) continue;
             float distance = Math.min(1f, Math.abs(d));
@@ -437,7 +467,7 @@ final class PlayerView extends View {
             float alpha = Math.max(0.06f, Math.min(1f, fade * edgeFade));
 
             int color;
-            if (distance < 0.35f) color = theme.text;
+            if (distance < 0.35f) color = Theme.blend(theme.text, theme.accent, 0.20f);
             else if (distance < 1.2f) color = Theme.blend(theme.text, theme.sub, 0.55f + 0.3f * distance);
             else color = theme.dim;
             color = Theme.alpha(color, (int) (255 * alpha));
@@ -448,6 +478,20 @@ final class PlayerView extends View {
             } else {
                 text(c, lines.get(i).text, left, y, size, color, distance < 0.35f, right - left);
             }
+            if (i == activeIndex) drawLyricProgress(c, left, right, y,
+                    LrcParser.lineProgress(lines, activeIndex, model.positionMs, model.duration), focusLyrics);
+        }
+    }
+
+    /** 当前句的细进度线：让用户看出这一句正在播放到哪里，不做昂贵的逐字动画。 */
+    private void drawLyricProgress(Canvas c, float left, float right, float baseline,
+                                   float fraction, boolean centered) {
+        float width = Math.min(centered ? 184f : 128f, right - left);
+        float x = centered ? (left + right - width) / 2f : left;
+        float y = baseline + 17f;
+        round(c, x, y, width, 2f, 1f, Theme.alpha(theme.text, 24));
+        if (fraction > 0f) {
+            round(c, x, y, Math.max(2f, width * fraction), 2f, 1f, Theme.alpha(theme.accent, 220));
         }
     }
 
@@ -690,13 +734,26 @@ final class PlayerView extends View {
 
     private boolean ensureArt() {
         Bitmap source = model.artwork;
-        if (source == artSource && artCache != null) return false;
+        // 部分播放器会在元数据切换时回收旧封面；不要把失效 Bitmap 交给 Canvas。
+        if (source != null && source.isRecycled()) source = null;
+        if (source == artSource && artCache != null && !artCache.isRecycled()) return false;
         artSource = source;
         if (artCache != null && !artCache.isRecycled()) artCache.recycle();
         Bitmap base = source != null ? source : placeholder();
-        artCache = squareCrop(base, (int) ART_S);
-        tint = dominant(base);
-        if (base != source) base.recycle();
+        try {
+            artCache = squareCrop(base, (int) ART_S);
+            tint = dominant(base);
+        } catch (RuntimeException invalidArtwork) {
+            // 对异常尺寸/并发释放的封面降级为占位图，不能让播放主界面崩溃。
+            if (base != source && !base.isRecycled()) base.recycle();
+            artSource = null;
+            Bitmap fallback = placeholder();
+            artCache = squareCrop(fallback, (int) ART_S);
+            tint = dominant(fallback);
+            fallback.recycle();
+            return true;
+        }
+        if (base != source && !base.isRecycled()) base.recycle();
         return true;
     }
 

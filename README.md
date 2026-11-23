@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.4.0
+# 流光车机音乐 · 0.6.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -64,11 +64,11 @@ Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库
 
 - 整屏是封面放大模糊后的底色，叠加主题色；
 - 左侧 300×300 大圆角封面、歌名、歌手 · 专辑；
-- 右侧歌词纵向居中、偏右排列，当前句最大最亮，上下句依次缩小淡出，到边界柔和消失（不会出现被切一半的字）；
+- 右侧歌词纵向居中、偏右排列，当前句最大最亮，上下句依次缩小淡出，到边界柔和消失（不会出现被切一半的字）；当前句下方有轻量进度线；
 - 底部细进度条 + 三个圆形按钮；
 - 右上角两个圆形按钮：沉浸歌词、设置；时钟可直接点进空闲屏。
 
-**四套主题**（设置里切换，即时生效）：流光（暖金深色）、晨雾（米白浅色）、极夜（纯黑）、青瓷（墨绿）。
+**五套主题**（设置里切换，即时生效）：曜石（现代石墨灰 + 青绿色）、流光（暖金深色）、晨雾（米白浅色）、极夜（纯黑）、青瓷（墨绿）。
 
 **操作**：触摸；也支持方向盘/旋钮——方向键做空间导航（焦点环），确认键执行，返回键逐层退出，媒体键直接控制播放。
 
@@ -110,7 +110,7 @@ src/cn/liuguang/drive/
   LyricCache.java         歌词时间轴落盘
   SessionPick.java        多播放器时挑显示哪个会话（纯 Java，可测）
   AppProfile.java         播放器包名 → 名称/品牌色
-  Theme.java              四套配色
+  Theme.java              五套配色
   Panels.java / Sheet.java 面板组件与自绘模态卡片
   BluetoothStatus.java    只读 A2DP 连接状态
   CrashLog.java           崩溃落盘
@@ -129,21 +129,54 @@ bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
 
 依赖只有 `platforms;android-28` 和 `build-tools;34.0.0`。
 
-### 签名与覆盖安装
+### 签名与覆盖安装（正式发布前必读）
 
-APK 用仓库里的 `signing/liuguang-release.jks` 签名（别名 `liuguang`，密码 `liuguang-local-build`）。**这个文件必须提交**：Android 只允许同签名的包覆盖安装，签名一变就只能先卸载，设置和歌词缓存全丢。
+Android 只允许同签名 APK 覆盖安装。仓库早期版本曾把签名密钥和密码公开提交到 Git 历史中，因此该密钥已视为**泄露**，不得继续用于正式发布。删除文件不会清除 Git 历史中的旧副本。0.6.0 的 CI 构建使用一次性临时密钥，仅用于验证编译与 APK 结构，不能覆盖安装旧版，也不能上传为正式 Release。
 
-- 升级版本时记得同时改 `AndroidManifest.xml` 的 `versionCode`（必须递增）和 `build.sh` 里的 `VERSION`；
-- CI 产出的 APK 和 Release 里的 APK 用同一把密钥，所以从 Actions 下载的包也能直接盖在已装版本上；
-- 想换成自己的密钥：`SIGNING_KEYSTORE=/path/to.jks SIGNING_PASSWORD=*** bash build.sh`，但换过之后老用户必须卸载一次。
+正式发布前，维护者必须生成一把新的私有发布密钥，并将以下 GitHub Actions Secrets 配置到仓库（Settings → Secrets and variables → Actions）：
 
-> 密钥是公开的，这意味着别人也能签一个同名的包。本项目没有联网权限、只读媒体信息，风险可控；如果你要正式分发，把密钥挪到 GitHub Secrets 里，别提交。
+- `SIGNING_KEYSTORE_BASE64`：新 `.jks` 文件的 Base64 内容；
+- `SIGNING_PASSWORD`：密钥库密码；
+- `SIGNING_ALIAS`：密钥别名。
+
+可在本地生成新密钥（请离线安全备份，丢失后将无法继续发布可覆盖安装的更新）：
+
+```bash
+keytool -genkeypair -v -keystore liuguang-release.jks -alias liuguang -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 liuguang-release.jks
+```
+
+将 Base64 输出保存到 `SIGNING_KEYSTORE_BASE64`，密码保存到 `SIGNING_PASSWORD`，别名保存到 `SIGNING_ALIAS`。新密钥与旧公开密钥不同，旧版本用户需要先卸载旧版再安装新签名版本；卸载会清除应用私有设置和歌词缓存。之后必须安全备份新密钥，绝不能提交到 Git 或写入日志。普通本地正式构建使用 `SIGNING_KEYSTORE`、`SIGNING_ALIAS`、`SIGNING_PASSWORD` 环境变量。
+
+---
+
+## 0.6.0 更新
+
+- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
+- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
+- 移除仓库内公开的发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
+- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入 Git 历史或构建日志。
+
+## 0.6.0 更新
+
+- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
+- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
+- 移除仓库当前版本树中的公开发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
+- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入新提交和构建日志。
+
+## 0.5.0 更新
+
+- 新增「曜石」现代座舱主题：石墨灰背景、青绿色强调色，以及封面/歌词双卡片布局。
+- 当前歌词增加逐句进度线；歌词绘制仅遍历当前可视区附近的行，减少长歌词时间轴的每帧扫描开销。
+- 增加低内存回收：系统内存告急时释放可重建的封面/整屏 Bitmap 缓存；媒体通知快照最多保留 8 个来源。
+- 优化封面静态层重建：移除临时缩略 Bitmap 分配；遇到已回收或异常封面时安全降级为占位图，避免元数据切换导致界面崩溃。
+- 增加可选的「开机自动启动」设置，默认关闭。开启后，Android 9 在系统发送 `BOOT_COMPLETED` 广播时尝试启动主界面；部分车机固件可能限制开机拉起应用，实际行为需在目标设备验证。
 
 ---
 
 ## 隐私
 
-- 只有 `BLUETOOTH` / `BLUETOOTH_ADMIN` 两个权限，**没有 INTERNET**；
+- 仅申请 `BLUETOOTH`、`BLUETOOTH_ADMIN` 和 `RECEIVE_BOOT_COMPLETED`，**没有 INTERNET**；
 - 通知监听只处理带 `MediaSession` 或 `category=transport` 的通知，聊天、短信、其他通知一律不读；
 - 不配对、不读 MAC、不上传任何数据；歌词缓存只存在本机 `filesDir`。
 
@@ -155,4 +188,4 @@ APK 用仓库里的 `signing/liuguang-release.jks` 签名（别名 `liuguang`，
 - 歌词依赖播放器主动上报。播放器不提供就没有，本软件不会联网去搜歌词（也没有网络权限）。
 - 第一次听某首歌时歌词只能逐句出现，放完一遍后才有完整时间轴。
 - 部分车机的媒体通知不带 `MediaSession.Token`，会退回 `MediaSessionManager.getActiveSessions()`；若该接口被厂商限制，则无法读取。
-- 签名固定为仓库里的 `signing/liuguang-release.jks`，从 0.4.0 起可直接覆盖安装，不需要先卸载。
+- 0.4.0 及更早版本曾使用仓库历史中的旧签名；该密钥已公开泄露，0.6.0 之后正式发布需使用新私钥，首次迁移需卸载旧版。

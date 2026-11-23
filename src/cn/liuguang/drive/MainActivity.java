@@ -5,6 +5,7 @@ import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -92,7 +93,7 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
         CrashLog.install(this);
 
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        themeId = prefs.getInt("theme", Theme.STREAM);
+        themeId = prefs.getInt("theme", Theme.MODERN);
         dimLevel = prefs.getInt("dim", 0);
         largeText = prefs.getBoolean("large", false);
         fillScreen = prefs.getBoolean("fill", false);
@@ -151,10 +152,27 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
     }
 
     @Override protected void onDestroy() {
-        super.onDestroy();
         detach();
         if (bluetooth != null) bluetooth.stop();
         dismissDialog();
+        handler.removeCallbacksAndMessages(null);
+        if (view != null) view.releaseCaches();
+        if (model != null) model.artwork = null;
+        metadata = null;
+        super.onDestroy();
+    }
+
+    /** 系统内存告急或界面退到后台时，释放可重建的封面与整屏缓存。 */
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && view != null) {
+            view.releaseCaches();
+        }
+    }
+
+    @Override public void onLowMemory() {
+        super.onLowMemory();
+        if (view != null) view.releaseCaches();
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
@@ -736,6 +754,18 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
             }
         });
         column.addView(auto);
+
+        final boolean autoStartEnabled = prefs.getBoolean("autoStart", false);
+        final LinearLayout autoStart = Panels.row(this, theme, "开机自动启动", autoStartEnabled ? "开" : "关", null);
+        autoStart.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                boolean enabled = !prefs.getBoolean("autoStart", false);
+                prefs.edit().putBoolean("autoStart", enabled).apply();
+                setRowValue(autoStart, enabled ? "开" : "关");
+                toast(enabled ? "已开启开机自动启动" : "已关闭开机自动启动");
+            }
+        });
+        column.addView(autoStart);
 
         final LinearLayout dim = Panels.row(this, theme, "屏幕调光", dimLabel(), null);
         dim.setOnClickListener(new View.OnClickListener() {

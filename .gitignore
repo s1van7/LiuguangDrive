@@ -4,6 +4,4 @@ build/
 *.keystore
 local.properties
 
-# 发布签名必须提交：签名一变，用户就得先卸载才能装新版。
-# 这个文件是公开的，只用于本项目；换成自己的密钥请连同密码一起改。
-!signing/liuguang-release.jks
+# 发布密钥只能保存在本机安全位置或 GitHub Actions Secrets，禁止提交。

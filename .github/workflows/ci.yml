@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/**', 'release/**']
     paths-ignore:
       - 'docs/**'
       - '**.md'
@@ -68,6 +68,8 @@ jobs:
           ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
 
       - name: 构建（aapt → javac → d8 → zipalign → apksigner）
+        env:
+          ALLOW_EPHEMERAL_SIGNING: "1"
         run: bash build.sh
 
       - name: 校验产物
@@ -80,12 +82,23 @@ jobs:
           BADGING=$("$AAPT" dump badging "$APK")
           echo "$BADGING" | grep -E "^package:|^sdkVersion|^targetSdkVersion|^uses-permission"
 
-          # 版本号必须是 0.4.0
-          echo "$BADGING" | grep -q "versionName='0.4.0'" || { echo "::error::versionName 不是 0.4.0"; exit 1; }
+          # 版本号与 build.sh 保持一致，避免升级版本后 CI 仍校验旧版本
+          EXPECTED_VERSION=$(grep '^VERSION=' build.sh | head -1 | cut -d '"' -f 2)
+          [ -n "$EXPECTED_VERSION" ] || { echo "::error::无法从 build.sh 读取版本号"; exit 1; }
+          echo "$BADGING" | grep -q "versionName='$EXPECTED_VERSION'" || { echo "::error::versionName 与 build.sh 不一致，期望 $EXPECTED_VERSION"; exit 1; }
+          grep -q 'android:versionCode="6"' AndroidManifest.xml || { echo "::error::versionCode 必须为 6"; exit 1; }
+          echo "$BADGING" | grep -q "sdkVersion:'28'" || { echo "::error::minSdk 必须为 28"; exit 1; }
+          echo "$BADGING" | grep -q "targetSdkVersion:'28'" || { echo "::error::targetSdk 必须为 28"; exit 1; }
 
-          # 只能有蓝牙两个权限，绝不能有 INTERNET
+          # 蓝牙 + 可选开机启动权限；绝不能有 INTERNET
           PERMS=$(echo "$BADGING" | grep -c "^uses-permission" || true)
-          [ "$PERMS" -eq 2 ] || { echo "::error::权限数量应为 2，实际 $PERMS"; exit 1; }
+          [ "$PERMS" -eq 3 ] || { echo "::error::权限数量应为 3，实际 $PERMS"; exit 1; }
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q "android.intent.action.BOOT_COMPLETED" || {
+            echo "::error::APK 缺少 BOOT_COMPLETED 接收器"; exit 1;
+          }
+          grep -q 'android:name=".BootReceiver"' AndroidManifest.xml
+          grep -q 'android:exported="false"' AndroidManifest.xml || { echo "::error::BootReceiver 必须不可导出"; exit 1; }
+
           if echo "$BADGING" | grep -q "android.permission.INTERNET"; then
             echo "::error::APK 不应包含 INTERNET 权限"; exit 1
           fi
@@ -97,7 +110,7 @@ jobs:
       - name: 上传 APK
         uses: actions/upload-artifact@v7
         with:
-          name: LiuguangDrive-apk
+          name: LiuguangDrive-0.6.0-CI-only
           path: build/LiuguangDrive-*.apk
           if-no-files-found: error
           retention-days: 14
