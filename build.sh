@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-VERSION="0.6.0"
+VERSION="0.7.0"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$SDK" ]; then echo "请先设置 ANDROID_HOME 指向 Android SDK 目录。" >&2; exit 1; fi
 TOOLS="$SDK/build-tools/34.0.0"
