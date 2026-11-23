@@ -9,8 +9,8 @@ import android.graphics.Color;
  * 覆盖强度（0-255），浅色主题需要更厚的覆盖才不会被深色封面压暗。
  */
 final class Theme {
-    static final int STREAM = 0, MIST = 1, NIGHT = 2, CELADON = 3;
-    static final String[] NAMES = {"流光", "晨雾", "极夜", "青瓷"};
+    static final int STREAM = 0, MIST = 1, NIGHT = 2, CELADON = 3, MODERN = 4;
+    static final String[] NAMES = {"流光", "晨雾", "极夜", "青瓷", "曜石"};
 
     final int id;
     final boolean dark;
@@ -51,6 +51,15 @@ final class Theme {
                 good = 0xFF8FE0B8; warn = 0xFFE2B25E;
                 veilTop = 208; veilBottom = 244; shadow = 0xFF020806;
                 break;
+            case MODERN:
+                dark = true;
+                bgTop = 0xFF101820; bgBottom = 0xFF080E14;
+                surface = 0xFF17232D; surfaceHi = 0xFF20313D; line = 0xFF2A3B47;
+                text = 0xFFF1F6F8; sub = 0xFFA4B5BF; dim = 0xFF657985;
+                accent = 0xFF55D6C2; accentInk = 0xFF06211F;
+                good = 0xFF83D9AD; warn = 0xFFE9B66D;
+                veilTop = 238; veilBottom = 248; shadow = 0xFF02070A;
+                break;
             case STREAM:
             default:
                 dark = true;
@@ -65,11 +74,11 @@ final class Theme {
     }
 
     static Theme of(int id, boolean largeText) {
-        if (id < 0 || id >= NAMES.length) id = STREAM;
+        if (id < 0 || id >= NAMES.length) id = MODERN;
         return new Theme(id, largeText);
     }
 
-    static String name(int id) { return id >= 0 && id < NAMES.length ? NAMES[id] : NAMES[0]; }
+    static String name(int id) { return id >= 0 && id < NAMES.length ? NAMES[id] : NAMES[MODERN]; }
 
     static int alpha(int color, int a) {
         return (color & 0x00FFFFFF) | (Math.max(0, Math.min(255, a)) << 24);
