@@ -68,6 +68,8 @@ jobs:
           ls "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools"
 
       - name: 构建（aapt → javac → d8 → zipalign → apksigner）
+        env:
+          ALLOW_EPHEMERAL_SIGNING: "1"
         run: bash build.sh
 
       - name: 校验产物
@@ -91,6 +93,9 @@ jobs:
           "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -q "android.intent.action.BOOT_COMPLETED" || {
             echo "::error::APK 缺少 BOOT_COMPLETED 接收器"; exit 1;
           }
+          "$AAPT" dump xmltree "$APK" AndroidManifest.xml | grep -A 8 "cn.liuguang.drive.BootReceiver" | grep -q "exported=\x270x0\x27" || {
+            echo "::error::BootReceiver 必须不可被第三方应用导出"; exit 1;
+          }
 
           if echo "$BADGING" | grep -q "android.permission.INTERNET"; then
             echo "::error::APK 不应包含 INTERNET 权限"; exit 1
@@ -103,7 +108,7 @@ jobs:
       - name: 上传 APK
         uses: actions/upload-artifact@v7
         with:
-          name: LiuguangDrive-apk
+          name: LiuguangDrive-0.6.0-CI-only
           path: build/LiuguangDrive-*.apk
           if-no-files-found: error
           retention-days: 14
