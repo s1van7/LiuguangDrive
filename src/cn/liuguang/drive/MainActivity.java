@@ -910,7 +910,7 @@ public class MainActivity extends Activity implements PlayerView.Host, MediaAcce
         LinearLayout column = Panels.column(this, theme);
         column.addView(Panels.heading(this, theme, "关于"));
         column.addView(Panels.body(this, theme,
-                "流光车机音乐 0.3.0\n\n"
+                "流光车机音乐 0.7.0\n\n"
                         + "这是一个纯显示端：歌曲、歌手、专辑、封面、时长、进度、播放状态和歌词全部来自"
                         + "手机上正在播放的播放器，通过蓝牙传到车机。软件本身不存歌、不联网、不导入任何文件。\n\n"
                         + "已适配：汽水音乐、QQ音乐、网易云音乐、咪咕音乐、酷狗、酷我、喜马拉雅。\n\n"
