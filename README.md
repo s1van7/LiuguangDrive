@@ -1,4 +1,4 @@
-# 流光车机音乐 · 0.6.0
+# 流光车机音乐 · 0.7.0
 
 [![CI](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml/badge.svg)](https://github.com/s1van7/LiuguangDrive/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/s1van7/LiuguangDrive?label=APK)](https://github.com/s1van7/LiuguangDrive/releases/latest)
@@ -6,7 +6,7 @@
 
 面向 Android 9 / 1024×600 车机的**纯显示端**音乐界面。手机通过蓝牙放歌，车机屏幕完整显示歌名、歌手、专辑、封面、进度和歌词。
 
-Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码 14 个文件、单包、零依赖，APK 约 53 KB。
+Java + 系统 Canvas 手绘，无 WebView、无第三方运行时、无原生库、**没有网络权限**。全部代码保持单包、零第三方运行时依赖，APK 体积保持轻量。
 
 ---
 
@@ -124,7 +124,7 @@ src/cn/liuguang/drive/
 
 ```bash
 bash build.sh          # aapt → javac → d8 → zipalign → apksigner
-bash tests/run.sh      # 纯 JVM 自检，73 项断言，不需要设备
+bash tests/run.sh      # 纯 JVM 自检，76 项断言，不需要设备
 ```
 
 依赖只有 `platforms;android-28` 和 `build-tools;34.0.0`。
@@ -150,19 +150,20 @@ base64 -w0 liuguang-release.jks
 
 ---
 
+## 0.7.0 更新
+
+- 多播放器同时活跃时，优先保持当前正在播放的会话；无当前会话时，按最近状态更新时间选择播放中或缓冲中的来源，减少切换抖动。
+- 通知监听服务重连时主动回填系统仍在显示的媒体通知，减少重连后等待下一次通知更新的问题。
+- 通知监听断开时清空旧快照，避免把上一首歌的封面或歌词当作当前信息。
+- 将监听连接状态与界面回调引用声明为线程可见，降低 Binder 回调线程与主线程之间的可见性风险。
+- 扩充媒体会话选择测试，并校正文档中的歌词重复判定窗口。
+
 ## 0.6.0 更新
 
 - 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
 - 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
 - 移除仓库内公开的发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
 - 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入 Git 历史或构建日志。
-
-## 0.6.0 更新
-
-- 发布版本升级至 `versionCode=6` / `versionName=0.6.0`，保持 Android 9（API 28）最低兼容目标。
-- 开机启动接收器改为不可导出，减少第三方应用伪造开机广播触发启动的风险。
-- 移除仓库当前版本树中的公开发布签名密钥；CI 使用一次性临时密钥，仅用于编译验证，CI APK 不能作为正式升级包。
-- 正式发布改为使用 GitHub Actions 私有 Secrets 中的签名密钥，避免签名材料进入新提交和构建日志。
 
 ## 0.5.0 更新
 

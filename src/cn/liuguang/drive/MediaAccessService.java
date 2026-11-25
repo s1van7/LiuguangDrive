@@ -69,8 +69,8 @@ public class MediaAccessService extends NotificationListenerService {
     }
 
     private static final Map<String, Snapshot> SNAPSHOTS = new LinkedHashMap<String, Snapshot>();
-    private static Sink sink;
-    private static boolean connected;
+    private static volatile Sink sink;
+    private static volatile boolean connected;
     /** 防止车机长期收到多个播放器通知时，静态快照无限持有封面 Bitmap。 */
     private static final int MAX_SNAPSHOTS = 8;
 
@@ -100,12 +100,24 @@ public class MediaAccessService extends NotificationListenerService {
 
     @Override public void onListenerConnected() {
         connected = true;
+        // 服务重连时，系统不保证重新发送所有仍显示中的通知；主动回填快照，
+        // 避免界面只能等下一次歌曲切换才重新拿到歌词通知。
+        try {
+            StatusBarNotification[] active = getActiveNotifications();
+            if (active != null) {
+                for (StatusBarNotification sbn : active) onNotificationPosted(sbn);
+            }
+        } catch (Exception ignored) {
+            // 部分车机固件可能限制读取当前通知；后续新通知仍会正常进入回调。
+        }
         notifySink();
         sendBroadcast(new Intent(CHANGED).setPackage(getPackageName()));
     }
 
     @Override public void onListenerDisconnected() {
         connected = false;
+        // 断开监听后快照不再可信，清除旧封面和歌词，防止重连前显示上一首歌。
+        synchronized (SNAPSHOTS) { SNAPSHOTS.clear(); }
         notifySink();
         sendBroadcast(new Intent(CHANGED).setPackage(getPackageName()));
     }
